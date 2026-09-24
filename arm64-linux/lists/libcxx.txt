@@ -1,0 +1,16 @@
+# The parts of libc++ that are compiled rather than header-only, and only
+# the ones a Nexa program on this target reaches. Relative to sources/libcxx.
+src/new.cpp
+src/new_helpers.cpp
+src/verbose_abort.cpp
+src/string.cpp
+src/random.cpp
+src/thread.cpp
+src/system_error.cpp
+src/mutex.cpp
+src/condition_variable.cpp
+src/future.cpp
+src/stdexcept.cpp
+src/exception.cpp
+src/typeinfo.cpp
+src/error_category.cpp

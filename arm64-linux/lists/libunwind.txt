@@ -1,0 +1,8 @@
+# libunwind for aarch64: what walks the stack when a C++ exception is thrown.
+# The EHABI, SEH, sjlj, wasm and AIX sources are other platforms'. Relative
+# to sources/libunwind.
+src/libunwind.cpp
+src/UnwindLevel1.c
+src/UnwindLevel1-gcc-ext.c
+src/UnwindRegistersRestore.S
+src/UnwindRegistersSave.S

@@ -1,0 +1,3 @@
+# Vendored upstream source: keep every byte exactly as upstream shipped it,
+# on every platform, rather than letting git rewrite line endings on checkout.
+* -text

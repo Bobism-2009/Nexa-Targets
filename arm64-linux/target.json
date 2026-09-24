@@ -1,0 +1,108 @@
+{
+  "name": "arm64-linux",
+  "version": "1.0.0",
+  "description": "64-bit ARM Linux (AArch64): static programs, built against musl from source",
+  "os": "linux",
+  "triple": "aarch64-linux-musl",
+  "clang": 21,
+  "exceptions": true,
+
+  "modules": ["std/io", "std/math", "std/os", "std/file", "std/random", "std/crypto",
+              "std/json", "std/time", "std/thread", "std/network"],
+
+  "libraries": [
+    {
+      "name": "c",
+      "root": "sources/musl",
+      "files": "lists/musl.txt",
+      "flags": [
+        "-std=c99", "-nostdinc", "-ffreestanding", "-frounding-math", "-D_XOPEN_SOURCE=700",
+        "-I", "{root}/arch/aarch64", "-I", "{root}/arch/generic",
+        "-I", "{target}/sources/musl-gen/src/internal",
+        "-I", "{root}/src/include", "-I", "{root}/src/internal",
+        "-I", "{target}/sources/musl-gen/include", "-I", "{root}/include",
+        "-Os", "-fomit-frame-pointer", "-fno-unwind-tables", "-fno-asynchronous-unwind-tables",
+        "-ffunction-sections", "-fdata-sections", "-fno-stack-protector",
+        "-Werror=implicit-function-declaration", "-Werror=implicit-int", "-w"
+      ]
+    },
+    {
+      "name": "builtins",
+      "root": "sources/compiler-rt/lib/builtins",
+      "files": "lists/builtins.txt",
+      "flags": [
+        "-nostdinc",
+        "-isystem", "{target}/sources/musl/include", "-isystem", "{target}/sources/musl-gen/include",
+        "-isystem", "{target}/sources/musl/arch/aarch64", "-isystem", "{target}/sources/musl/arch/generic",
+        "-isystem", "{resource}",
+        "-O2", "-fno-builtin", "-fomit-frame-pointer", "-ffunction-sections", "-fdata-sections",
+        "-mno-outline-atomics", "-w"
+      ]
+    },
+    {
+      "name": "c++",
+      "root": "sources/libcxx",
+      "files": "lists/libcxx.txt",
+      "flags": [
+        "-std=c++23", "-nostdinc", "-nostdinc++",
+        "-isystem", "{target}/sources/libcxx-gen", "-isystem", "{root}/include",
+        "-isystem", "{target}/sources/libcxxabi/include", "-isystem", "{resource}",
+        "-isystem", "{target}/sources/musl/include", "-isystem", "{target}/sources/musl-gen/include",
+        "-isystem", "{target}/sources/musl/arch/aarch64", "-isystem", "{target}/sources/musl/arch/generic",
+        "-I", "{root}/src", "-D_LIBCPP_BUILDING_LIBRARY", "-DLIBCXX_BUILDING_LIBCXXABI", "-DNDEBUG",
+        "-O2", "-fexceptions", "-frtti", "-mno-outline-atomics",
+        "-ffunction-sections", "-fdata-sections", "-w"
+      ]
+    },
+    {
+      "name": "c++abi",
+      "root": "sources/libcxxabi",
+      "files": "lists/libcxxabi.txt",
+      "flags": [
+        "-std=c++23", "-nostdinc", "-nostdinc++",
+        "-isystem", "{target}/sources/libcxx-gen", "-isystem", "{target}/sources/libcxx/include",
+        "-isystem", "{target}/sources/libunwind/include", "-isystem", "{resource}",
+        "-isystem", "{target}/sources/musl/include", "-isystem", "{target}/sources/musl-gen/include",
+        "-isystem", "{target}/sources/musl/arch/aarch64", "-isystem", "{target}/sources/musl/arch/generic",
+        "-I", "{root}/include", "-I", "{root}/src", "-I", "{target}/sources/libcxx/src",
+        "-D_LIBCXXABI_BUILDING_LIBRARY", "-D_LIBCPP_BUILDING_LIBRARY", "-DLIBCXXABI_USE_LLVM_UNWINDER",
+        "-DNDEBUG", "-O2", "-fexceptions", "-frtti", "-mno-outline-atomics",
+        "-ffunction-sections", "-fdata-sections", "-w"
+      ]
+    },
+    {
+      "name": "unwind",
+      "root": "sources/libunwind",
+      "files": "lists/libunwind.txt",
+      "flags": [
+        "-nostdinc", "-nostdinc++",
+        "-isystem", "{target}/sources/libcxx-gen", "-isystem", "{target}/sources/libcxx/include",
+        "-isystem", "{resource}",
+        "-isystem", "{target}/sources/musl/include", "-isystem", "{target}/sources/musl-gen/include",
+        "-isystem", "{target}/sources/musl/arch/aarch64", "-isystem", "{target}/sources/musl/arch/generic",
+        "-I", "{root}/include", "-D_LIBUNWIND_IS_NATIVE_ONLY", "-DNDEBUG",
+        "-O2", "-fno-exceptions", "-fno-rtti", "-funwind-tables", "-mno-outline-atomics",
+        "-ffunction-sections", "-fdata-sections", "-w"
+      ]
+    }
+  ],
+
+  "startfiles": {
+    "library": "c",
+    "before": ["crt/crt1.c", "crt/aarch64/crti.s"],
+    "after": ["crt/aarch64/crtn.s"]
+  },
+
+  "program": {
+    "flags": [
+      "-std=c++17", "-nostdinc", "-nostdinc++",
+      "-isystem", "{target}/sources/libcxx-gen", "-isystem", "{target}/sources/libcxx/include",
+      "-isystem", "{resource}",
+      "-isystem", "{target}/sources/musl/include", "-isystem", "{target}/sources/musl-gen/include",
+      "-isystem", "{target}/sources/musl/arch/aarch64", "-isystem", "{target}/sources/musl/arch/generic",
+      "-mno-outline-atomics"
+    ]
+  },
+
+  "link": ["--eh-frame-hdr"]
+}
