@@ -59,7 +59,7 @@ All source, compiled by your clang the first time you build for this target
 | `sources/libunwind` | libunwind from LLVM 22.1.4 — unwinds the stack when an exception is thrown | Apache 2.0 with LLVM exception, `sources/libunwind/LICENSE.TXT` |
 | `sources/compiler-rt` | compiler-rt builtins from LLVM 22.1.4 — 128-bit `long double` arithmetic and friends | Apache 2.0 with LLVM exception, `sources/compiler-rt/LICENSE.TXT` |
 | `sources/llvm-libc` | the LLVM libc 22.1.4 headers libc++'s `from_chars` is built from | Apache 2.0 with LLVM exception, `sources/llvm-libc/LICENSE.TXT` |
-| `sources/linux-headers` | [Linux](https://kernel.org) 6.18.53 (longterm) — the arm64 user-space API, as `make headers_install` exports it: `<linux/...>`, `<asm/...>` | GPL-2.0 WITH Linux-syscall-note, `sources/linux-headers/COPYING` — the note means a program that uses them is not a derived work of the kernel |
+| `sources/linux-headers` | [Linux](https://kernel.org) 6.18.53 (longterm) — the arm64 user-space API, as `make headers_install` exports it: `<linux/...>`, `<asm/...>` | GPL-2.0 WITH Linux-syscall-note, `sources/linux-headers/COPYING` — the note means a program that uses them is not a derived work of the kernel. Eight pairs of netfilter headers whose names differ only in case (`xt_MARK.h`, `xt_mark.h`) are left out, so the package installs the same on Windows and macOS |
 | `sources/musl-gen`, `sources/libcxx-gen` | the headers musl's Makefile and libc++'s CMake would have generated | MIT (this repository) |
 
 Only the parts that are used are here: musl's AArch64 sources; all of libc++

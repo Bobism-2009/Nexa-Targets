@@ -329,6 +329,20 @@ def build_linux_headers(work):
         for f in files:
             if f.startswith('.') or not f.endswith('.h'):
                 os.remove(os.path.join(root, f))
+    # A few netfilter headers come in pairs that differ only in case
+    # (xt_MARK.h, xt_mark.h). Windows and macOS keep one of each, so the
+    # package would install differently there than on Linux; both of every
+    # such pair are left out. They are iptables extension structures, which
+    # no program built for this target reaches for.
+    by_lower = {}
+    for root, _, files in os.walk(out):
+        for f in files:
+            full = os.path.join(root, f)
+            by_lower.setdefault(full.lower(), []).append(full)
+    for group in by_lower.values():
+        if len(group) > 1:
+            for full in group:
+                os.remove(full)
     copy(os.path.join(src, 'COPYING'), os.path.join(out, 'COPYING'))
     copy(os.path.join(src, 'LICENSES', 'exceptions', 'Linux-syscall-note'),
          os.path.join(out, 'Linux-syscall-note'))

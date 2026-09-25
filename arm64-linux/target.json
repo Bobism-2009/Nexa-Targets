@@ -1,6 +1,6 @@
 {
   "name": "arm64-linux",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "64-bit ARM Linux (AArch64): static programs, built against musl from source",
   "os": "linux",
   "triple": "aarch64-linux-musl",
