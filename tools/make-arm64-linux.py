@@ -70,6 +70,10 @@ LIBCXX_CORE = [
     'random.cpp', 'thread.cpp', 'system_error.cpp', 'mutex.cpp',
     'condition_variable.cpp', 'future.cpp', 'stdexcept.cpp', 'exception.cpp',
     'typeinfo.cpp', 'error_category.cpp',
+    # std::function's bad_function_call, and the out-of-line destructors of
+    # std::mutex and std::condition_variable: Nexa emits std::function for
+    # closures and a mutex for threads. Found by Nexa's own Tests/*_test.nxa.
+    'functional.cpp', 'mutex_destructor.cpp', 'condition_variable_destructor.cpp',
 ]
 LIBCXX_SRC = [
     'algorithm.cpp', 'any.cpp', 'bind.cpp', 'call_once.cpp', 'charconv.cpp', 'chrono.cpp',

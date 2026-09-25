@@ -14,3 +14,6 @@ src/stdexcept.cpp
 src/exception.cpp
 src/typeinfo.cpp
 src/error_category.cpp
+src/functional.cpp
+src/mutex_destructor.cpp
+src/condition_variable_destructor.cpp
