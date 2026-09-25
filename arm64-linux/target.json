@@ -1,6 +1,6 @@
 {
   "name": "arm64-linux",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "64-bit ARM Linux (AArch64): static programs, built against musl from source",
   "os": "linux",
   "triple": "aarch64-linux-musl",
@@ -100,7 +100,7 @@
       "-isystem", "{resource}",
       "-isystem", "{target}/sources/musl/include", "-isystem", "{target}/sources/musl-gen/include",
       "-isystem", "{target}/sources/musl/arch/aarch64", "-isystem", "{target}/sources/musl/arch/generic",
-      "-mno-outline-atomics"
+      "-mno-outline-atomics", "-fsigned-char"
     ]
   },
 

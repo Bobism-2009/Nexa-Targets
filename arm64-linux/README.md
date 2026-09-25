@@ -30,6 +30,9 @@ docker run --rm -v "$PWD:/w" alpine /w/hello
 - **Modules:** `std/io`, `std/math`, `std/os`, `std/file`, `std/random`,
   `std/crypto`, `std/json`, `std/time`, `std/thread`, `std/network`
 - **C++ exceptions**, so `io.to_int`, `Result` and `try`/`catch` work
+- **`char` is signed**, as on every other Nexa platform. AArch64 Linux makes
+  a C `char` unsigned by default, so programs are built with `-fsigned-char`;
+  without it `'\x80'` would be 128 here and -128 everywhere else.
 
 **Not supported**, and refused by NexaC before it compiles anything:
 
