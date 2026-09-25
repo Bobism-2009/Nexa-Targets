@@ -12,6 +12,8 @@ this script, from two upstream releases:
                         and the LLVM libc headers libc++'s charconv uses
     Linux 6.18.53       https://cdn.kernel.org/pub/linux/kernel/v6.x/  (longterm)
                         the arm64 user-space headers: <linux/...>, <asm/...>
+    mbedTLS 3.6.7       https://github.com/Mbed-TLS/mbedtls  (LTS)
+                        TLS for HTTPS, behind tls/openssl-shim.c
 
 To move to a newer release, change the versions below, run this, and rebuild a
 program with --target arm64-linux: the runtime is keyed by the package version,
@@ -43,6 +45,9 @@ LLVM_TAG = 'llvmorg-22.1.4'
 LLVM_URL = 'https://github.com/llvm/llvm-project.git'
 ARCH = 'aarch64'
 LINUX_VERSION = '6.18.53'
+MBEDTLS_VERSION = '3.6.7'
+MBEDTLS_URL = ('https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-%s/mbedtls-%s.tar.bz2'
+               % (MBEDTLS_VERSION, MBEDTLS_VERSION))
 LINUX_URL = 'https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-%s.tar.xz' % LINUX_VERSION
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -359,6 +364,37 @@ def build_linux_headers(work):
     return sum(len(fs) for _, _, fs in os.walk(os.path.join(out, 'include')))
 
 
+# --- mbedTLS: HTTPS -----------------------------------------------------------------
+#
+# Nexa's HTTP runtime dlopen()s libssl at run time, which a static program
+# cannot do. tls/openssl-shim.c (written for this package, not generated)
+# answers that dlopen with the OpenSSL calls Nexa makes, implemented on
+# mbedTLS. Everything in library/ is listed; the linker keeps what the shim
+# reaches. The release tarball already carries the files mbedTLS generates.
+
+def build_mbedtls(work):
+    src = os.path.join(work, 'mbedtls-' + MBEDTLS_VERSION)
+    if not os.path.isdir(src):
+        tbz = src + '.tar.bz2'
+        print('downloading', MBEDTLS_URL)
+        urllib.request.urlretrieve(MBEDTLS_URL, tbz)
+        with tarfile.open(tbz) as t:
+            t.extractall(work)
+    out = os.path.join(SRC, 'mbedtls')
+    copytree(os.path.join(src, 'include'), os.path.join(out, 'include'))
+    lib = sorted(f for f in os.listdir(os.path.join(src, 'library')) if f.endswith(('.c', '.h')))
+    for f in lib:
+        copy(os.path.join(src, 'library', f), os.path.join(out, 'library', f))
+    copy(os.path.join(src, 'LICENSE'), os.path.join(out, 'LICENSE'))
+    files = ['sources/mbedtls/library/' + f for f in lib if f.endswith('.c')]
+    write_list('tls.txt', [
+        'HTTPS: mbedTLS %s, and the OpenSSL-shaped front Nexa\'s HTTP runtime' % MBEDTLS_VERSION,
+        'loads (tls/openssl-shim.c, part of this package). Relative to the',
+        'package directory. Built only for programs that include std/network.',
+    ], files + ['tls/openssl-shim.c'])
+    return len(files)
+
+
 # --- LLVM libc: the headers libc++'s charconv borrows -------------------------------
 #
 # libc++'s from_chars for floating point is LLVM libc's string-to-float, used as
@@ -465,11 +501,12 @@ def main():
     build_cxx(llvm)
     h = build_llvm_libc(llvm)
     k = build_linux_headers(args.work)
+    t = build_mbedtls(args.work)
     size = sum(os.path.getsize(os.path.join(r, f)) for r, _, fs in os.walk(OUT) for f in fs)
     print('arm64-linux: %d musl, %d builtins, %d libc++, %d libc++abi, %d libunwind files, '
-          '%d LLVM libc headers, %d kernel headers; %.1f MB'
+          '%d LLVM libc headers, %d kernel headers, %d mbedTLS files; %.1f MB'
           % (len([f for f in m if not f.startswith('crt/')]), len(b), len(LIBCXX_SRC),
-             len(LIBCXXABI_SRC), len(LIBUNWIND_SRC), h, k, size / 1e6))
+             len(LIBCXXABI_SRC), len(LIBUNWIND_SRC), h, k, t, size / 1e6))
 
 
 if __name__ == '__main__':

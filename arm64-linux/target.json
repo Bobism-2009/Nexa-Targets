@@ -1,6 +1,6 @@
 {
   "name": "arm64-linux",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "64-bit ARM Linux (AArch64): static programs, built against musl from source",
   "os": "linux",
   "triple": "aarch64-linux-musl",
@@ -11,6 +11,21 @@
               "std/json", "std/time", "std/thread", "std/network", "std/inline"],
 
   "libraries": [
+    {
+      "name": "tls",
+      "when": ["std/network"],
+      "root": ".",
+      "files": "lists/tls.txt",
+      "flags": [
+        "-std=gnu11", "-nostdinc",
+        "-isystem", "{target}/sources/musl/include", "-isystem", "{target}/sources/musl-gen/include",
+        "-isystem", "{target}/sources/musl/arch/aarch64", "-isystem", "{target}/sources/musl/arch/generic",
+        "-isystem", "{target}/sources/linux-headers/include", "-isystem", "{resource}",
+        "-I", "{target}/sources/mbedtls/include", "-I", "{target}/sources/mbedtls/library",
+        "-I", "{target}/tls", "-DMBEDTLS_USER_CONFIG_FILE=<nexa-mbedtls-config.h>",
+        "-O2", "-ffunction-sections", "-fdata-sections", "-mno-outline-atomics", "-w"
+      ]
+    },
     {
       "name": "c",
       "root": "sources/musl",

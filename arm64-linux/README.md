@@ -34,6 +34,12 @@ docker run --rm -v "$PWD:/w" alpine /w/hello
   `<filesystem>`, `<regex>`, `<charconv>`, locales, threads and the rest —
   plus musl's Linux system calls, so inline C++ can open `/dev/gpiochip0`,
   an I2C bus or a serial port the way any Linux program does
+- **HTTPS** in `std/network`, TLS 1.2 and 1.3, checked against the device's
+  own trusted roots (`/etc/ssl/certs/ca-certificates.crt` on Raspberry Pi OS,
+  Debian and Ubuntu; other distributions' bundles too; `SSL_CERT_FILE` or
+  `SSL_CERT_DIR` to choose). An expired, self-signed or wrong-host
+  certificate fails with `TLS certificate verify failed` before anything is
+  sent. See [How HTTPS works here](#how-https-works-here).
 - **C++ exceptions**, so `io.to_int`, `Result` and `try`/`catch` work
 - **`char` is signed**, as on every other Nexa platform. AArch64 Linux makes
   a C `char` unsigned by default, so programs are built with `-fsigned-char`;
@@ -43,8 +49,6 @@ docker run --rm -v "$PWD:/w" alpine /w/hello
 
 - `std/gfx` and `std/gfx3d` — no display libraries are built for this target
 - `std/dll` — a static program cannot load a shared library
-- HTTPS in `std/network`: on Linux, NexaC loads the system's OpenSSL at run
-  time, which a static program cannot do. TCP and UDP are unaffected.
 
 ## What is inside
 
@@ -64,6 +68,8 @@ uses it.
 | `sources/compiler-rt` | compiler-rt builtins from LLVM 22.1.4 — 128-bit `long double` arithmetic and friends | Apache 2.0 with LLVM exception, `sources/compiler-rt/LICENSE.TXT` |
 | `sources/llvm-libc` | the LLVM libc 22.1.4 headers libc++'s `from_chars` is built from | Apache 2.0 with LLVM exception, `sources/llvm-libc/LICENSE.TXT` |
 | `sources/linux-headers` | [Linux](https://kernel.org) 6.18.53 (longterm) — the arm64 user-space API, as `make headers_install` exports it: `<linux/...>`, `<asm/...>` | GPL-2.0 WITH Linux-syscall-note, `sources/linux-headers/COPYING` — the note means a program that uses them is not a derived work of the kernel. Eight pairs of netfilter headers whose names differ only in case (`xt_MARK.h`, `xt_mark.h`) are left out, so the package installs the same on Windows and macOS |
+| `sources/mbedtls` | [mbedTLS](https://github.com/Mbed-TLS/mbedtls) 3.6.7 (LTS) — TLS for HTTPS | Apache 2.0, `sources/mbedtls/LICENSE` |
+| `tls/` | written for this package: `openssl-shim.c`, and mbedTLS's settings | MIT (this repository) |
 | `sources/musl-gen`, `sources/libcxx-gen` | the headers musl's Makefile and libc++'s CMake would have generated | MIT (this repository) |
 
 Only the parts that are used are here: musl's AArch64 sources; all of libc++
@@ -71,6 +77,23 @@ Only the parts that are used are here: musl's AArch64 sources; all of libc++
 and compiler-rt, the source files a C++ program on AArch64 Linux links against.
 The linker keeps only what a program calls: a program that uses none of it is
 16 bytes bigger than it was before the rest of libc++ was added.
+
+## How HTTPS works here
+
+On Linux, Nexa's HTTP runtime does not link OpenSSL; it `dlopen`s `libssl.so`
+when a program first makes an HTTPS request. A static program has no dynamic
+loader, and musl's `dlopen` is a stub that always fails -- a *weak* stub, as is
+the `__dlsym` behind `dlsym`, there to be replaced. `tls/openssl-shim.c`
+replaces them: asked for `libssl` or `libcrypto`, `dlopen` returns a handle, and
+`dlsym` on it answers with the OpenSSL calls Nexa makes, implemented on
+mbedTLS. Any other `dlopen` fails exactly as musl's would. Nothing in Nexa
+knows; it is the same runtime a desktop Linux program gets.
+
+The `tls` library is built only for programs that include `std/network`, the
+first time one is built (about 6 more seconds on Linux), and is listed before
+`c` in `target.json` so the linker takes the shim's `dlopen` over musl's. A
+program that includes `std/network` but makes no HTTPS request carries none of
+it.
 
 ## Regenerating
 
