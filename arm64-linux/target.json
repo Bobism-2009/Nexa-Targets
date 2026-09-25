@@ -1,6 +1,6 @@
 {
   "name": "arm64-linux",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "64-bit ARM Linux (AArch64): static programs, built against musl from source",
   "os": "linux",
   "triple": "aarch64-linux-musl",
@@ -8,7 +8,7 @@
   "exceptions": true,
 
   "modules": ["std/io", "std/math", "std/os", "std/file", "std/random", "std/crypto",
-              "std/json", "std/time", "std/thread", "std/network"],
+              "std/json", "std/time", "std/thread", "std/network", "std/inline"],
 
   "libraries": [
     {
@@ -49,7 +49,9 @@
         "-isystem", "{target}/sources/libcxxabi/include", "-isystem", "{resource}",
         "-isystem", "{target}/sources/musl/include", "-isystem", "{target}/sources/musl-gen/include",
         "-isystem", "{target}/sources/musl/arch/aarch64", "-isystem", "{target}/sources/musl/arch/generic",
-        "-I", "{root}/src", "-D_LIBCPP_BUILDING_LIBRARY", "-DLIBCXX_BUILDING_LIBCXXABI", "-DNDEBUG",
+        "-isystem", "{target}/sources/linux-headers/include",
+        "-I", "{root}/src", "-I", "{target}/sources/llvm-libc",
+        "-D_LIBCPP_BUILDING_LIBRARY", "-DLIBCXX_BUILDING_LIBCXXABI", "-DNDEBUG",
         "-O2", "-fexceptions", "-frtti", "-mno-outline-atomics",
         "-ffunction-sections", "-fdata-sections", "-w"
       ]
@@ -100,6 +102,7 @@
       "-isystem", "{resource}",
       "-isystem", "{target}/sources/musl/include", "-isystem", "{target}/sources/musl-gen/include",
       "-isystem", "{target}/sources/musl/arch/aarch64", "-isystem", "{target}/sources/musl/arch/generic",
+      "-isystem", "{target}/sources/linux-headers/include",
       "-mno-outline-atomics", "-fsigned-char"
     ]
   },

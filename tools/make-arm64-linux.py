@@ -8,7 +8,10 @@ this script, from two upstream releases:
 
     musl 1.2.5          https://musl.libc.org/releases/musl-1.2.5.tar.gz
     LLVM 22.1.4         https://github.com/llvm/llvm-project  (tag llvmorg-22.1.4)
-                        libc++, libc++abi, libunwind, compiler-rt builtins
+                        libc++, libc++abi, libunwind, compiler-rt builtins,
+                        and the LLVM libc headers libc++'s charconv uses
+    Linux 6.18.53       https://cdn.kernel.org/pub/linux/kernel/v6.x/  (longterm)
+                        the arm64 user-space headers: <linux/...>, <asm/...>
 
 To move to a newer release, change the versions below, run this, and rebuild a
 program with --target arm64-linux: the runtime is keyed by the package version,
@@ -19,6 +22,10 @@ Nothing here compiles anything. It downloads, selects, and copies source files,
 and writes the handful of headers that musl's and libc++'s own build systems
 would otherwise have generated. Needs git (for a sparse checkout of LLVM, which
 downloads only the directories used) and network access.
+
+The kernel headers are produced by the kernel's own `make headers_install`,
+which needs a Linux (or macOS) host with make and a C compiler: it builds a
+small host tool that strips the kernel-internal parts out of each header.
 """
 
 import argparse
@@ -35,21 +42,40 @@ MUSL_URL = 'https://musl.libc.org/releases/musl-%s.tar.gz' % MUSL_VERSION
 LLVM_TAG = 'llvmorg-22.1.4'
 LLVM_URL = 'https://github.com/llvm/llvm-project.git'
 ARCH = 'aarch64'
+LINUX_VERSION = '6.18.53'
+LINUX_URL = 'https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-%s.tar.xz' % LINUX_VERSION
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, '..', 'arm64-linux'))
 SRC = os.path.join(OUT, 'sources')
 LISTS = os.path.join(OUT, 'lists')
 
-# The parts of libc++, libc++abi and libunwind that are compiled rather than
-# header-only -- and only the parts a Nexa program on this target reaches.
-# Found by linking every std module's programs and adding what the linker
-# asked for, so a file here is here because something needed it.
+# The parts of libc++ that are compiled rather than header-only: all of them,
+# as libc++'s own src/CMakeLists.txt lists them for Linux with threads, the
+# random device, localization and the filesystem library -- the whole C++
+# standard library, so inline_cpp! (std/inline) can reach any of it. Two are
+# left out: new_handler.cpp, because libc++abi defines the same handler, and
+# filesystem/int128_builtins.cpp, because compiler-rt's builtins are linked.
 LIBCXX_SRC = [
-    'new.cpp', 'new_helpers.cpp', 'verbose_abort.cpp', 'string.cpp',
-    'random.cpp', 'thread.cpp', 'system_error.cpp', 'mutex.cpp',
-    'condition_variable.cpp', 'future.cpp', 'stdexcept.cpp', 'exception.cpp',
-    'typeinfo.cpp', 'error_category.cpp',
+    'algorithm.cpp', 'any.cpp', 'bind.cpp', 'call_once.cpp', 'charconv.cpp', 'chrono.cpp',
+    'error_category.cpp', 'exception.cpp', 'expected.cpp',
+    'filesystem/filesystem_clock.cpp', 'filesystem/filesystem_error.cpp', 'filesystem/path.cpp',
+    'functional.cpp', 'hash.cpp', 'memory.cpp', 'memory_resource.cpp', 'new.cpp',
+    'new_helpers.cpp', 'optional.cpp', 'print.cpp', 'random_shuffle.cpp',
+    'ryu/d2fixed.cpp', 'ryu/d2s.cpp', 'ryu/f2s.cpp', 'stdexcept.cpp', 'string.cpp',
+    'system_error.cpp', 'typeinfo.cpp', 'valarray.cpp', 'variant.cpp', 'vector.cpp',
+    'verbose_abort.cpp',
+    # threads
+    'atomic.cpp', 'barrier.cpp', 'condition_variable_destructor.cpp', 'condition_variable.cpp',
+    'future.cpp', 'mutex_destructor.cpp', 'mutex.cpp', 'shared_mutex.cpp', 'thread.cpp',
+    # random device
+    'random.cpp',
+    # localization: iostreams, locales, regex
+    'fstream.cpp', 'ios.cpp', 'ios.instantiations.cpp', 'iostream.cpp', 'locale.cpp',
+    'ostream.cpp', 'regex.cpp', 'strstream.cpp',
+    # filesystem
+    'filesystem/directory_entry.cpp', 'filesystem/directory_iterator.cpp',
+    'filesystem/operations.cpp',
 ]
 LIBCXXABI_SRC = [
     'cxa_guard.cpp', 'abort_message.cpp', 'cxa_handlers.cpp', 'cxa_default_handlers.cpp',
@@ -138,13 +164,18 @@ def fetch(work):
     llvm = os.path.join(work, 'llvm-project')
     if not os.path.isdir(llvm):
         print('sparse-cloning', LLVM_URL, LLVM_TAG)
-        subprocess.check_call(['git', 'clone', '--quiet', '--depth', '1', '--branch', LLVM_TAG,
+        # autocrlf off: a Windows git would otherwise hand back CRLF copies,
+        # and the package keeps upstream's bytes exactly.
+        subprocess.check_call(['git', '-c', 'core.autocrlf=false', 'clone', '--quiet',
+                               '--depth', '1', '--branch', LLVM_TAG,
                                '--filter=blob:none', '--sparse', LLVM_URL, llvm])
         subprocess.check_call(['git', '-C', llvm, 'sparse-checkout', 'set',
                                'libcxx/include', 'libcxx/src', 'libcxx/vendor',
                                'libcxxabi/include', 'libcxxabi/src',
                                'libunwind/include', 'libunwind/src',
-                               'compiler-rt/lib/builtins'])
+                               'compiler-rt/lib/builtins',
+                               'libc/shared', 'libc/src/__support', 'libc/hdr',
+                               'libc/include/llvm-libc-macros', 'libc/include/llvm-libc-types'])
     return musl, llvm
 
 
@@ -267,6 +298,78 @@ def build_builtins(llvm):
     return files
 
 
+# --- Linux kernel headers ----------------------------------------------------------
+#
+# <linux/futex.h> for libc++'s atomic waits, and for inline_cpp! everything a
+# Linux program reaches for below the C library: <linux/gpio.h>,
+# <linux/i2c-dev.h>, <linux/spi/spidev.h>, <linux/input.h> and the rest. musl
+# ships none of them, by design. This is the kernel's user-space API exactly
+# as `make headers_install` exports it for arm64 -- the same set a distribution
+# packages as linux-libc-dev or kernel-headers. Licensed GPL-2.0 WITH
+# Linux-syscall-note: using these headers does not make a program a derived
+# work of the kernel.
+
+def build_linux_headers(work):
+    src = os.path.join(work, 'linux-' + LINUX_VERSION)
+    if not os.path.isdir(src):
+        txz = src + '.tar.xz'
+        print('downloading', LINUX_URL)
+        urllib.request.urlretrieve(LINUX_URL, txz)
+        with tarfile.open(txz) as t:
+            t.extractall(work)
+    staged = os.path.join(work, 'linux-headers-arm64')
+    if os.path.exists(staged):
+        shutil.rmtree(staged)
+    subprocess.check_call(['make', '-s', '-C', src, 'ARCH=arm64',
+                           'INSTALL_HDR_PATH=' + staged, 'headers_install'])
+    out = os.path.join(SRC, 'linux-headers')
+    copytree(os.path.join(staged, 'include'), os.path.join(out, 'include'))
+    # headers_install leaves its bookkeeping beside the headers.
+    for root, _, files in os.walk(out):
+        for f in files:
+            if f.startswith('.') or not f.endswith('.h'):
+                os.remove(os.path.join(root, f))
+    copy(os.path.join(src, 'COPYING'), os.path.join(out, 'COPYING'))
+    copy(os.path.join(src, 'LICENSES', 'exceptions', 'Linux-syscall-note'),
+         os.path.join(out, 'Linux-syscall-note'))
+    return sum(len(fs) for _, _, fs in os.walk(os.path.join(out, 'include')))
+
+
+# --- LLVM libc: the headers libc++'s charconv borrows -------------------------------
+#
+# libc++'s from_chars for floating point is LLVM libc's string-to-float, used as
+# headers: src/include/from_chars_floating_point.h includes "shared/fp_bits.h"
+# and friends, with the libc directory on the include path. Only the headers
+# those includes reach are copied -- found by following every quoted #include
+# from them, conditional ones too, so nothing a configuration might want is
+# missing.
+
+LIBC_INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"]+)"', re.M)
+
+
+def build_llvm_libc(llvm):
+    libc = os.path.normpath(os.path.join(llvm, 'libc'))
+    start = os.path.join(llvm, 'libcxx', 'src', 'include', 'from_chars_floating_point.h')
+    seen, todo = set(), [start]
+    while todo:
+        f = todo.pop()
+        with open(f, encoding='utf-8') as fh:
+            text = fh.read()
+        for inc in LIBC_INCLUDE.findall(text):
+            for base in (libc, os.path.dirname(f)):
+                cand = os.path.normpath(os.path.join(base, inc))
+                if os.path.isfile(cand) and cand.startswith(libc):
+                    if cand not in seen:
+                        seen.add(cand)
+                        todo.append(cand)
+                    break
+    out = os.path.join(SRC, 'llvm-libc')
+    for f in sorted(seen):
+        copy(f, os.path.join(out, os.path.relpath(f, libc)))
+    copy(os.path.join(libc, 'LICENSE.TXT'), os.path.join(out, 'LICENSE.TXT'))
+    return len(seen)
+
+
 # --- libc++, libc++abi, libunwind --------------------------------------------------
 
 def build_cxx(llvm):
@@ -277,13 +380,17 @@ def build_cxx(llvm):
     copytree(os.path.join(L, 'src', 'support'), os.path.join(x_out, 'src', 'support'))
     for f in LIBCXX_SRC:
         copy(os.path.join(L, 'src', f), os.path.join(x_out, 'src', f))
+    # The sources' private headers, wherever they sit under src/.
+    for h in glob.glob(os.path.join(L, 'src', '**', '*.h'), recursive=True):
+        copy(h, os.path.join(x_out, 'src', os.path.relpath(h, os.path.join(L, 'src'))))
     copy(os.path.join(L, 'LICENSE.TXT'), os.path.join(x_out, 'LICENSE.TXT'))
     write(os.path.join(SRC, 'libcxx-gen', '__config_site'), CONFIG_SITE)
     copy(os.path.join(L, 'vendor', 'llvm', 'default_assertion_handler.in'),
          os.path.join(SRC, 'libcxx-gen', '__assertion_handler'))
     write_list('libcxx.txt', [
-        'The parts of libc++ that are compiled rather than header-only, and only',
-        'the ones a Nexa program on this target reaches. Relative to sources/libcxx.',
+        'The parts of libc++ that are compiled rather than header-only: all of',
+        'them, so inline_cpp! can use the whole C++ standard library. Relative to',
+        'sources/libcxx.',
     ], ['src/' + f for f in LIBCXX_SRC])
 
     A = os.path.join(llvm, 'libcxxabi')
@@ -327,10 +434,13 @@ def main():
     m = build_musl(musl)
     b = build_builtins(llvm)
     build_cxx(llvm)
+    h = build_llvm_libc(llvm)
+    k = build_linux_headers(args.work)
     size = sum(os.path.getsize(os.path.join(r, f)) for r, _, fs in os.walk(OUT) for f in fs)
-    print('arm64-linux: %d musl, %d builtins, %d libc++, %d libc++abi, %d libunwind files; %.1f MB'
+    print('arm64-linux: %d musl, %d builtins, %d libc++, %d libc++abi, %d libunwind files, '
+          '%d LLVM libc headers, %d kernel headers; %.1f MB'
           % (len([f for f in m if not f.startswith('crt/')]), len(b), len(LIBCXX_SRC),
-             len(LIBCXXABI_SRC), len(LIBUNWIND_SRC), size / 1e6))
+             len(LIBCXXABI_SRC), len(LIBUNWIND_SRC), h, k, size / 1e6))
 
 
 if __name__ == '__main__':

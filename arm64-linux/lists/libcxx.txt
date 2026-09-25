@@ -1,16 +1,56 @@
-# The parts of libc++ that are compiled rather than header-only, and only
-# the ones a Nexa program on this target reaches. Relative to sources/libcxx.
+# The parts of libc++ that are compiled rather than header-only: all of
+# them, so inline_cpp! can use the whole C++ standard library. Relative to
+# sources/libcxx.
+src/algorithm.cpp
+src/any.cpp
+src/bind.cpp
+src/call_once.cpp
+src/charconv.cpp
+src/chrono.cpp
+src/error_category.cpp
+src/exception.cpp
+src/expected.cpp
+src/filesystem/filesystem_clock.cpp
+src/filesystem/filesystem_error.cpp
+src/filesystem/path.cpp
+src/functional.cpp
+src/hash.cpp
+src/memory.cpp
+src/memory_resource.cpp
 src/new.cpp
 src/new_helpers.cpp
-src/verbose_abort.cpp
+src/optional.cpp
+src/print.cpp
+src/random_shuffle.cpp
+src/ryu/d2fixed.cpp
+src/ryu/d2s.cpp
+src/ryu/f2s.cpp
+src/stdexcept.cpp
 src/string.cpp
-src/random.cpp
-src/thread.cpp
 src/system_error.cpp
-src/mutex.cpp
+src/typeinfo.cpp
+src/valarray.cpp
+src/variant.cpp
+src/vector.cpp
+src/verbose_abort.cpp
+src/atomic.cpp
+src/barrier.cpp
+src/condition_variable_destructor.cpp
 src/condition_variable.cpp
 src/future.cpp
-src/stdexcept.cpp
-src/exception.cpp
-src/typeinfo.cpp
-src/error_category.cpp
+src/mutex_destructor.cpp
+src/mutex.cpp
+src/shared_mutex.cpp
+src/thread.cpp
+src/random.cpp
+src/fstream.cpp
+src/ios.cpp
+src/ios.instantiations.cpp
+src/iostream.cpp
+src/locale.cpp
+src/ostream.cpp
+src/regex.cpp
+src/strstream.cpp
+src/filesystem/directory_entry.cpp
+src/filesystem/directory_iterator.cpp
+src/filesystem/operations.cpp
