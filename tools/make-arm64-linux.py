@@ -56,6 +56,16 @@ LISTS = os.path.join(OUT, 'lists')
 # standard library, so inline_cpp! (std/inline) can reach any of it. Two are
 # left out: new_handler.cpp, because libc++abi defines the same handler, and
 # filesystem/int128_builtins.cpp, because compiler-rt's builtins are linked.
+# The part of it Nexa's own runtime reaches -- every program links this; found
+# by linking every std module's programs and adding what the linker asked for.
+# The rest is built only for a program that includes std/inline (target.json's
+# "when"), so it stays off every other program's first build.
+LIBCXX_CORE = [
+    'new.cpp', 'new_helpers.cpp', 'verbose_abort.cpp', 'string.cpp',
+    'random.cpp', 'thread.cpp', 'system_error.cpp', 'mutex.cpp',
+    'condition_variable.cpp', 'future.cpp', 'stdexcept.cpp', 'exception.cpp',
+    'typeinfo.cpp', 'error_category.cpp',
+]
 LIBCXX_SRC = [
     'algorithm.cpp', 'any.cpp', 'bind.cpp', 'call_once.cpp', 'charconv.cpp', 'chrono.cpp',
     'error_category.cpp', 'exception.cpp', 'expected.cpp',
@@ -401,11 +411,16 @@ def build_cxx(llvm):
     write(os.path.join(SRC, 'libcxx-gen', '__config_site'), CONFIG_SITE)
     copy(os.path.join(L, 'vendor', 'llvm', 'default_assertion_handler.in'),
          os.path.join(SRC, 'libcxx-gen', '__assertion_handler'))
+    assert set(LIBCXX_CORE) <= set(LIBCXX_SRC)
     write_list('libcxx.txt', [
-        'The parts of libc++ that are compiled rather than header-only: all of',
-        'them, so inline_cpp! can use the whole C++ standard library. Relative to',
-        'sources/libcxx.',
-    ], ['src/' + f for f in LIBCXX_SRC])
+        'The part of libc++ Nexa\'s own runtime reaches: every program links it.',
+        'Relative to sources/libcxx.',
+    ], ['src/' + f for f in LIBCXX_CORE])
+    write_list('libcxx-full.txt', [
+        'The rest of libc++ -- iostreams, locales, <filesystem>, <regex>,',
+        '<charconv> and the others -- built only for a program that includes',
+        'std/inline. Relative to sources/libcxx.',
+    ], ['src/' + f for f in LIBCXX_SRC if f not in LIBCXX_CORE])
 
     A = os.path.join(llvm, 'libcxxabi')
     a_out = os.path.join(SRC, 'libcxxabi')

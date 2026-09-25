@@ -48,8 +48,12 @@ docker run --rm -v "$PWD:/w" alpine /w/hello
 
 ## What is inside
 
-All source, compiled by your clang the first time you build for this target
-(about half a minute), then cached in `~/.nexa/cache/targets/arm64-linux/`.
+All source, compiled by your clang the first time you build for this target,
+then cached in `~/.nexa/cache/targets/arm64-linux/`: about 10 seconds on Linux,
+under a minute on Windows, where clang is slower per file. Most of libc++ --
+iostreams, locales, `<filesystem>`, `<regex>` -- is compiled only the first
+time a program includes `std/inline` (another 5-15 seconds), since nothing else
+uses it.
 
 | | Upstream | License |
 |---|---|---|

@@ -1,6 +1,6 @@
 {
   "name": "arm64-linux",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "64-bit ARM Linux (AArch64): static programs, built against musl from source",
   "os": "linux",
   "triple": "aarch64-linux-musl",
@@ -43,6 +43,24 @@
       "name": "c++",
       "root": "sources/libcxx",
       "files": "lists/libcxx.txt",
+      "flags": [
+        "-std=c++23", "-nostdinc", "-nostdinc++",
+        "-isystem", "{target}/sources/libcxx-gen", "-isystem", "{root}/include",
+        "-isystem", "{target}/sources/libcxxabi/include", "-isystem", "{resource}",
+        "-isystem", "{target}/sources/musl/include", "-isystem", "{target}/sources/musl-gen/include",
+        "-isystem", "{target}/sources/musl/arch/aarch64", "-isystem", "{target}/sources/musl/arch/generic",
+        "-isystem", "{target}/sources/linux-headers/include",
+        "-I", "{root}/src", "-I", "{target}/sources/llvm-libc",
+        "-D_LIBCPP_BUILDING_LIBRARY", "-DLIBCXX_BUILDING_LIBCXXABI", "-DNDEBUG",
+        "-O2", "-fexceptions", "-frtti", "-mno-outline-atomics",
+        "-ffunction-sections", "-fdata-sections", "-w"
+      ]
+    },
+    {
+      "name": "c++-full",
+      "when": ["std/inline"],
+      "root": "sources/libcxx",
+      "files": "lists/libcxx-full.txt",
       "flags": [
         "-std=c++23", "-nostdinc", "-nostdinc++",
         "-isystem", "{target}/sources/libcxx-gen", "-isystem", "{root}/include",

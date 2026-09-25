@@ -25,7 +25,8 @@ it. You can read every line of what ends up in your program.
 **It is all compiled after you run NexaC**, by the clang you already have:
 clang can build for every CPU LLVM supports, whether or not anyone asked it
 to. The first `--target` build compiles the platform's runtime from source
-(about half a minute for `arm64-linux`) and keeps the result in
+(for `arm64-linux`, about 10 seconds on Linux and under a minute on Windows)
+and keeps the result in
 `~/.nexa/cache/targets/`. Every build after that is a single compile and link.
 
 **A target says what it can do.** `target.json` lists the std modules it
@@ -62,7 +63,11 @@ A target is a directory holding:
 - `target.json` — its name and version, which of NexaC's platform slices to
   emit (`"os"`), the clang target triple, the std modules it supports, and the
   libraries to build: for each, a source root, a list file of what to compile,
-  and the compiler flags. See [`arm64-linux/target.json`](arm64-linux/target.json).
+  and the compiler flags. A library can carry `"when": ["std/inline"]`: it is
+  then built, and linked, only for a program that includes one of those
+  modules -- the first such program builds it -- so a large library few
+  programs need stays off everyone else's first build. See
+  [`arm64-linux/target.json`](arm64-linux/target.json).
 - `lists/` — one source path per line, relative to each library's root.
 - `sources/` — the source itself.
 - ideally a `tools/` script that regenerates `sources/` and `lists/` from

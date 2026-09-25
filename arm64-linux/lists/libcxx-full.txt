@@ -1,0 +1,42 @@
+# The rest of libc++ -- iostreams, locales, <filesystem>, <regex>,
+# <charconv> and the others -- built only for a program that includes
+# std/inline. Relative to sources/libcxx.
+src/algorithm.cpp
+src/any.cpp
+src/bind.cpp
+src/call_once.cpp
+src/charconv.cpp
+src/chrono.cpp
+src/expected.cpp
+src/filesystem/filesystem_clock.cpp
+src/filesystem/filesystem_error.cpp
+src/filesystem/path.cpp
+src/functional.cpp
+src/hash.cpp
+src/memory.cpp
+src/memory_resource.cpp
+src/optional.cpp
+src/print.cpp
+src/random_shuffle.cpp
+src/ryu/d2fixed.cpp
+src/ryu/d2s.cpp
+src/ryu/f2s.cpp
+src/valarray.cpp
+src/variant.cpp
+src/vector.cpp
+src/atomic.cpp
+src/barrier.cpp
+src/condition_variable_destructor.cpp
+src/mutex_destructor.cpp
+src/shared_mutex.cpp
+src/fstream.cpp
+src/ios.cpp
+src/ios.instantiations.cpp
+src/iostream.cpp
+src/locale.cpp
+src/ostream.cpp
+src/regex.cpp
+src/strstream.cpp
+src/filesystem/directory_entry.cpp
+src/filesystem/directory_iterator.cpp
+src/filesystem/operations.cpp
