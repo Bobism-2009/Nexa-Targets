@@ -1,0 +1,13 @@
+# std/gfx on X11: libxcb, the files its own build compiled. Relative to
+# sources/x11/libxcb. Built only for programs that include std/gfx.
+src/xcb_conn.c
+src/xcb_out.c
+src/xcb_in.c
+src/xcb_ext.c
+src/xcb_xid.c
+src/xcb_list.c
+src/xcb_util.c
+src/xcb_auth.c
+src/xproto.c
+src/bigreq.c
+src/xc_misc.c

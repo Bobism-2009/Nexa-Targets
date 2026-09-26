@@ -1,0 +1,28 @@
+# std/gfx on X11: libX11-im, the files its own build compiled. Relative to
+# sources/x11/libX11. Built only for programs that include std/gfx.
+modules/im/ximcp/imCallbk.c
+modules/im/ximcp/imDefFlt.c
+modules/im/ximcp/imDefIc.c
+modules/im/ximcp/imDefIm.c
+modules/im/ximcp/imDefLkup.c
+modules/im/ximcp/imDispch.c
+modules/im/ximcp/imEvToWire.c
+modules/im/ximcp/imExten.c
+modules/im/ximcp/imImSw.c
+modules/im/ximcp/imInsClbk.c
+modules/im/ximcp/imInt.c
+modules/im/ximcp/imLcFlt.c
+modules/im/ximcp/imLcGIc.c
+modules/im/ximcp/imLcIc.c
+modules/im/ximcp/imLcIm.c
+modules/im/ximcp/imLcLkup.c
+modules/im/ximcp/imLcPrs.c
+modules/im/ximcp/imLcSIc.c
+modules/im/ximcp/imRmAttr.c
+modules/im/ximcp/imRm.c
+modules/im/ximcp/imThaiFlt.c
+modules/im/ximcp/imThaiIc.c
+modules/im/ximcp/imThaiIm.c
+modules/im/ximcp/imTrans.c
+modules/im/ximcp/imTransR.c
+modules/im/ximcp/imTrX.c

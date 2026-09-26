@@ -29,7 +29,12 @@ docker run --rm -v "$PWD:/w" alpine /w/hello
 
 - **Modules:** `std/io`, `std/math`, `std/os`, `std/file`, `std/random`,
   `std/crypto`, `std/json`, `std/time`, `std/thread`, `std/network`,
-  `std/inline`
+  `std/inline`, `std/gfx`
+- **Windows and sound** in `std/gfx`: X11 is built into the program, so it
+  opens a window on any X server -- or, on a Wayland desktop such as
+  Raspberry Pi OS's, through XWayland -- with no X libraries installed. Sound
+  goes straight to the kernel, including the Raspberry Pi 4 and 5 HDMI ports.
+  See [How windows work here](#how-windows-work-here).
 - **The whole C++ standard library** for `inline_cpp!` — iostreams,
   `<filesystem>`, `<regex>`, `<charconv>`, locales, threads and the rest —
   plus musl's Linux system calls, so inline C++ can open `/dev/gpiochip0`,
@@ -47,7 +52,7 @@ docker run --rm -v "$PWD:/w" alpine /w/hello
 
 **Not supported**, and refused by NexaC before it compiles anything:
 
-- `std/gfx` and `std/gfx3d` — no display libraries are built for this target
+- `std/gfx3d` — no OpenGL is built for this target
 - `std/dll` — a static program cannot load a shared library
 
 ## What is inside
@@ -57,7 +62,8 @@ then cached in `~/.nexa/cache/targets/arm64-linux/`: about 10 seconds on Linux,
 under a minute on Windows, where clang is slower per file. Most of libc++ --
 iostreams, locales, `<filesystem>`, `<regex>` -- is compiled only the first
 time a program includes `std/inline` (another 5-15 seconds), since nothing else
-uses it.
+uses it. The same goes for X11: it is compiled the first time a program
+includes `std/gfx` (about 20 more seconds on Windows).
 
 | | Upstream | License |
 |---|---|---|
@@ -70,6 +76,7 @@ uses it.
 | `sources/linux-headers` | [Linux](https://kernel.org) 6.18.53 (longterm) — the arm64 user-space API, as `make headers_install` exports it: `<linux/...>`, `<asm/...>` | GPL-2.0 WITH Linux-syscall-note, `sources/linux-headers/COPYING` — the note means a program that uses them is not a derived work of the kernel. Eight pairs of netfilter headers whose names differ only in case (`xt_MARK.h`, `xt_mark.h`) are left out, so the package installs the same on Windows and macOS |
 | `sources/mbedtls` | [mbedTLS](https://github.com/Mbed-TLS/mbedtls) 3.6.7 (LTS) — TLS for HTTPS | Apache 2.0, `sources/mbedtls/LICENSE` |
 | `tls/` | written for this package: `openssl-shim.c`, and mbedTLS's settings | MIT (this repository) |
+| `sources/x11` | [X11](https://www.x.org): libX11 1.8.13, libxcb 1.17.0, libXau 1.0.12, libXdmcp 1.1.5, and the headers of xorgproto 2025.1 and xtrans 1.6.0 — the window behind `std/gfx`. Includes the files their own builds generate: the protocol C from xcb-proto 1.17.0, the keysym tables, and each library's `config.h` | MIT/X11 licenses, `sources/x11/*/COPYING` |
 | `sources/musl-gen`, `sources/libcxx-gen` | the headers musl's Makefile and libc++'s CMake would have generated | MIT (this repository) |
 
 Only the parts that are used are here: musl's AArch64 sources; all of libc++
@@ -95,15 +102,33 @@ first time one is built (about 6 more seconds on Linux), and is listed before
 program that includes `std/network` but makes no HTTPS request carries none of
 it.
 
+## How windows work here
+
+On Linux, Nexa's gfx runtime draws through Xlib, linked statically, so a
+program never needs X libraries on the machine it runs on. For this target the
+package builds that Xlib: libX11 on libxcb, which authenticates with libXau
+and libXdmcp. They are five libraries in `target.json` -- libX11 is three,
+since its files are compiled for different transports -- each built only for
+programs that include `std/gfx`, with exactly the files and settings its own
+build uses. The program finds the display the usual way, through `DISPLAY`
+(and `XAUTHORITY`), over the X server's local socket or TCP.
+
+Sound needs nothing from X: it opens the kernel's sound devices directly, as
+on every Linux. A Raspberry Pi 4 or 5 HDMI port takes no ordinary 16-bit
+audio, only IEC958 frames, and Nexa's runtime builds those when a card asks
+for them, the same way the Pi's own sound library does.
+
 ## Regenerating
 
 `sources/` and `lists/` are produced by
 [`../tools/make-arm64-linux.py`](../tools/make-arm64-linux.py) from the
 upstream releases above. To move to a newer musl, LLVM or Linux, change the
 versions at the top of that script, run it, and bump `"version"` in
-`target.json` so installed copies rebuild their runtime. Run it on Linux or
-macOS: the kernel headers come from the kernel's own `make headers_install`,
-which needs make and a C compiler.
+`target.json` so installed copies rebuild their runtime. Run it on Linux: the
+kernel headers come from the kernel's own `make headers_install`, which needs
+make and a C compiler, and X11 is configured and built once natively (it also
+needs python3 and pkg-config) so its generated files and exact file lists can
+be taken from that build.
 
 ## Requirements
 

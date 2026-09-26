@@ -1,7 +1,6 @@
 # The rest of libc++ -- iostreams, locales, <filesystem>, <regex>,
 # <charconv> and the others -- built only for a program that includes
 # std/inline. Relative to sources/libcxx.
-src/algorithm.cpp
 src/any.cpp
 src/bind.cpp
 src/call_once.cpp

@@ -1,0 +1,10 @@
+# std/gfx on X11: libXau, the files its own build compiled. Relative to
+# sources/x11/libXau. Built only for programs that include std/gfx.
+AuDispose.c
+AuFileName.c
+AuGetAddr.c
+AuGetBest.c
+AuLock.c
+AuRead.c
+AuUnlock.c
+AuWrite.c

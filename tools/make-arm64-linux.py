@@ -14,20 +14,31 @@ this script, from two upstream releases:
                         the arm64 user-space headers: <linux/...>, <asm/...>
     mbedTLS 3.6.7       https://github.com/Mbed-TLS/mbedtls  (LTS)
                         TLS for HTTPS, behind tls/openssl-shim.c
+    X11                 https://www.x.org/releases/individual/
+                        libX11 1.8.13, libxcb 1.17.0, libXau 1.0.12,
+                        libXdmcp 1.1.5, xorgproto 2025.1, xcb-proto 1.17.0,
+                        xtrans 1.6.0 -- the window behind std/gfx
 
 To move to a newer release, change the versions below, run this, and rebuild a
 program with --target arm64-linux: the runtime is keyed by the package version,
 so bump "version" in target.json too, or installed copies will keep using the
 runtime they already compiled.
 
-Nothing here compiles anything. It downloads, selects, and copies source files,
-and writes the handful of headers that musl's and libc++'s own build systems
-would otherwise have generated. Needs git (for a sparse checkout of LLVM, which
+Nothing here compiles anything for the target. It downloads, selects, and
+copies source files, and writes the handful of headers that musl's and
+libc++'s own build systems would otherwise have generated. Needs git (for a sparse checkout of LLVM, which
 downloads only the directories used) and network access.
 
 The kernel headers are produced by the kernel's own `make headers_install`,
 which needs a Linux (or macOS) host with make and a C compiler: it builds a
 small host tool that strips the kernel-internal parts out of each header.
+
+X11 is the same, more so: its C for the protocol is generated from XML by
+xcb-proto's Python, its keysym tables by a host tool, and its config headers by
+autoconf. So the X11 libraries are configured and built once, natively, on a
+Linux host with make, a C compiler, python3 and pkg-config, and the package
+takes the sources, the generated files, and the exact list of files each
+library compiled -- read off the build's own log -- from that build.
 """
 
 import argparse
@@ -49,6 +60,18 @@ MBEDTLS_VERSION = '3.6.7'
 MBEDTLS_URL = ('https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-%s/mbedtls-%s.tar.bz2'
                % (MBEDTLS_VERSION, MBEDTLS_VERSION))
 LINUX_URL = 'https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-%s.tar.xz' % LINUX_VERSION
+X11_URL = 'https://www.x.org/releases/individual/'
+# Built in this order; each finds the ones before it through pkg-config.
+X11_PARTS = [
+    ('proto/xorgproto-2025.1', []),
+    ('proto/xcb-proto-1.17.0', []),
+    ('lib/xtrans-1.6.0', []),
+    ('lib/libXau-1.0.12', []),
+    ('lib/libXdmcp-1.1.5', []),
+    ('xcb/libxcb-1.17.0', ['--disable-devel-docs', '--without-doxygen']),
+    ('lib/libX11-1.8.13', ['--disable-specs', '--disable-loadable-i18n', '--disable-loadable-xcursor',
+                           '--disable-xf86bigfont', '--without-launchd', '--disable-malloc0returnsnull']),
+]
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, '..', 'arm64-linux'))
@@ -74,6 +97,9 @@ LIBCXX_CORE = [
     # std::mutex and std::condition_variable: Nexa emits std::function for
     # closures and a mutex for threads. Found by Nexa's own Tests/*_test.nxa.
     'functional.cpp', 'mutex_destructor.cpp', 'condition_variable_destructor.cpp',
+    # std::sort on the built-in types is instantiated here, not in the header:
+    # gfx's polygon fill sorts doubles.
+    'algorithm.cpp',
 ]
 LIBCXX_SRC = [
     'algorithm.cpp', 'any.cpp', 'bind.cpp', 'call_once.cpp', 'charconv.cpp', 'chrono.cpp',
@@ -399,6 +425,148 @@ def build_mbedtls(work):
     return len(files)
 
 
+# --- X11: the window behind std/gfx ------------------------------------------------
+#
+# Nexa's gfx runtime on Linux talks to the X server through Xlib, linked
+# statically, so a program owes nothing to the machine it runs on. That is
+# libX11 on libxcb, which authenticates with libXau and libXdmcp. Each is
+# configured and built natively here (see the docstring for why), and each
+# becomes one library in target.json, with its own config.h. libX11 is two:
+# three, because its files include xtrans for different transports (X11_t,
+# XIM_t, or one they define themselves) and one set of flags cannot say all.
+
+def x11_build(work):
+    stage = os.path.join(work, 'x11-stage')
+    env = dict(os.environ)
+    env['PKG_CONFIG_PATH'] = os.path.join(stage, 'usr/lib/pkgconfig') + ':' + \
+        os.path.join(stage, 'usr/share/pkgconfig')
+    env['PKG_CONFIG_SYSROOT_DIR'] = stage
+    env['CFLAGS'] = '-O2'
+    env['CPPFLAGS'] = '-I' + os.path.join(stage, 'usr/include')
+    env['LDFLAGS'] = '-L' + os.path.join(stage, 'usr/lib')
+    for part, extra in X11_PARTS:
+        name = os.path.basename(part)
+        src = os.path.join(work, name)
+        if not os.path.isdir(src):
+            txz = src + '.tar.xz'
+            print('downloading', X11_URL + part + '.tar.xz')
+            urllib.request.urlretrieve(X11_URL + part + '.tar.xz', txz)
+            with tarfile.open(txz) as t:
+                t.extractall(work)
+        log = os.path.join(work, name + '.make.log')
+        if not os.path.exists(os.path.join(src, 'config.status')):
+            subprocess.check_call(['./configure', '--prefix=/usr', '--sysconfdir=/etc', '--localstatedir=/var',
+                                   '--enable-static', '--disable-shared'] + extra,
+                                  cwd=src, env=env, stdout=subprocess.DEVNULL)
+        # From clean, so the log names every file: it is the list the package takes.
+        subprocess.check_call(['make', 'clean'], cwd=src, env=env, stdout=subprocess.DEVNULL)
+        with open(log, 'w') as f:
+            subprocess.check_call(['make', 'V=1'], cwd=src, env=env, stdout=f, stderr=subprocess.STDOUT)
+        subprocess.check_call(['make', 'install', 'DESTDIR=' + stage], cwd=src, env=env,
+                              stdout=subprocess.DEVNULL)
+        # libtool's .la files name the libraries by their installed path, which
+        # is not where they are; the next library's link would go looking there.
+        for la in glob.glob(os.path.join(stage, 'usr/lib/*.la')):
+            os.remove(la)
+    return stage
+
+
+# The .c files a library's build compiled, relative to its source directory,
+# read from `make V=1`: every libtool compile line names one. With `define`,
+# only the files compiled with that -D.
+def x11_compiled(work, name, define=None):
+    root = os.path.join(work, name)
+    cur = root
+    out = []
+    for line in open(os.path.join(work, name + '.make.log'), errors='replace'):
+        m = re.search(r"Entering directory '([^']+)'", line)
+        if m:
+            cur = m.group(1)
+        elif '--mode=compile' in line and line.rstrip().endswith('.c'):
+            if define and define not in line.split():
+                continue
+            f = os.path.relpath(os.path.normpath(os.path.join(cur, line.split()[-1])), root)
+            if f not in out:
+                out.append(f.replace(os.sep, '/'))
+    return out
+
+
+# The xcb headers Xlib and libxcb itself include: the core protocol, the two
+# extensions libxcb always speaks, and the interface Xlib drives it through.
+XCB_HEADERS = ['xcb.h', 'xcbext.h', 'xproto.h', 'bigreq.h', 'xc_misc.h']
+
+
+# config.h is the build host's answer; these are the ones musl answers
+# differently. musl has no arc4random_buf (libXdmcp then uses getentropy,
+# which musl has), and a static program has no dlopen to find anything with.
+X11_CONFIG_DROP = {
+    'libXdmcp-1.1.5': ['HAVE_ARC4RANDOM_BUF'],
+    'libX11-1.8.13': ['HAVE_DLOPEN'],
+}
+
+
+def build_x11(work):
+    stage = x11_build(work)
+    out = os.path.join(SRC, 'x11')
+    copytree(os.path.join(stage, 'usr/include', 'X11'), os.path.join(out, 'include', 'X11'))
+    for h in XCB_HEADERS:
+        copy(os.path.join(stage, 'usr/include', 'xcb', h), os.path.join(out, 'include', 'xcb', h))
+    lists = {}
+    for part, _ in X11_PARTS:
+        name = os.path.basename(part)
+        if not name.startswith('lib'):
+            continue
+        src = os.path.join(work, name)
+        files = x11_compiled(work, name)
+        if name.startswith('libxcb'):
+            # Only libxcb itself: its directory also builds every extension
+            # library, and Xlib needs none of them.
+            files = [f for f in files if os.path.basename(f).startswith('xcb_') or
+                     os.path.basename(f) in ('xproto.c', 'bigreq.c', 'xc_misc.c')]
+        if name.startswith('libX11'):
+            files = [f for f in files if os.path.basename(f) != 'x11_xcb.c']  # libX11-xcb
+        short = name.split('-')[0]
+        dst = os.path.join(out, short)
+        # Every .c and .h in the directories it compiled from, and its include/
+        # -- generated files included, since the build ran in place.
+        dirs = sorted(set(os.path.dirname(f) for f in files) | {'include'})
+        keep = None
+        if name.startswith('libxcb'):
+            keep = set(os.path.basename(f) for f in files) | set(XCB_HEADERS) | {'xcbint.h', 'xcb_windefs.h'}
+        for d in dirs:
+            for root, _, fs in os.walk(os.path.join(src, d)):
+                for f in fs:
+                    if f.endswith(('.c', '.h')) and (keep is None or f in keep):
+                        full = os.path.join(root, f)
+                        copy(full, os.path.join(dst, os.path.relpath(full, src)))
+        cfg = [c for c in glob.glob(os.path.join(src, '**', 'config.h'), recursive=True)]
+        for c in cfg:
+            text = open(c).read()
+            for sym in X11_CONFIG_DROP.get(name, []):
+                text = re.sub(r'^#define %s .*$' % sym, '/* %s: not on musl */' % sym, text, flags=re.M)
+            write(os.path.join(dst, os.path.relpath(c, src)), text)
+        copy(os.path.join(src, 'COPYING'), os.path.join(dst, 'COPYING'))
+        lists[short] = files
+    # libX11 as three libraries, by the transport its files were compiled
+    # for: the core (X11_t), input methods (XIM_t), and the rest (neither --
+    # xim_trans.c there defines XIM_t itself, so it must not be handed X11_t).
+    x11 = lists.pop('libX11')
+    core = x11_compiled(work, 'libX11-1.8.13', '-DX11_t')
+    im = x11_compiled(work, 'libX11-1.8.13', '-DXIM_t')
+    lists['libX11'] = [f for f in x11 if f in core]
+    lists['libX11-im'] = [f for f in x11 if f in im]
+    lists['libX11-i18n'] = [f for f in x11 if f not in core and f not in im]
+    for short, files in lists.items():
+        lib = {'libXau': 'xau', 'libXdmcp': 'xdmcp', 'libxcb': 'xcb', 'libX11': 'x11',
+               'libX11-im': 'x11-im', 'libX11-i18n': 'x11-i18n'}[short]
+        base = short.split('-')[0]
+        write_list(lib + '.txt', [
+            'std/gfx on X11: %s, the files its own build compiled. Relative to' % short,
+            'sources/x11/%s. Built only for programs that include std/gfx.' % base,
+        ], files)
+    return sum(len(f) for f in lists.values())
+
+
 # --- LLVM libc: the headers libc++'s charconv borrows -------------------------------
 #
 # libc++'s from_chars for floating point is LLVM libc's string-to-float, used as
@@ -506,11 +674,12 @@ def main():
     h = build_llvm_libc(llvm)
     k = build_linux_headers(args.work)
     t = build_mbedtls(args.work)
+    x = build_x11(args.work)
     size = sum(os.path.getsize(os.path.join(r, f)) for r, _, fs in os.walk(OUT) for f in fs)
     print('arm64-linux: %d musl, %d builtins, %d libc++, %d libc++abi, %d libunwind files, '
-          '%d LLVM libc headers, %d kernel headers, %d mbedTLS files; %.1f MB'
+          '%d LLVM libc headers, %d kernel headers, %d mbedTLS files, %d X11 files; %.1f MB'
           % (len([f for f in m if not f.startswith('crt/')]), len(b), len(LIBCXX_SRC),
-             len(LIBCXXABI_SRC), len(LIBUNWIND_SRC), h, k, t, size / 1e6))
+             len(LIBCXXABI_SRC), len(LIBUNWIND_SRC), h, k, t, x, size / 1e6))
 
 
 if __name__ == '__main__':

@@ -1,0 +1,11 @@
+# std/gfx on X11: libXdmcp, the files its own build compiled. Relative to
+# sources/x11/libXdmcp. Built only for programs that include std/gfx.
+Array.c
+Fill.c
+Flush.c
+Key.c
+Read.c
+Unwrap.c
+Wrap.c
+Write.c
+Wraphelp.c
