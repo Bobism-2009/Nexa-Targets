@@ -1,6 +1,6 @@
 {
   "name": "arm64-linux",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "64-bit ARM Linux (AArch64): static programs, built against musl from source",
   "os": "linux",
   "triple": "aarch64-linux-musl",
@@ -8,7 +8,7 @@
   "exceptions": true,
 
   "modules": ["std/io", "std/math", "std/os", "std/file", "std/random", "std/crypto",
-              "std/json", "std/time", "std/thread", "std/network", "std/inline", "std/gfx"],
+              "std/json", "std/time", "std/thread", "std/network", "std/inline", "std/gfx", "std/ui"],
 
   "libraries": [
     {

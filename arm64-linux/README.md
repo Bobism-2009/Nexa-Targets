@@ -29,12 +29,13 @@ docker run --rm -v "$PWD:/w" alpine /w/hello
 
 - **Modules:** `std/io`, `std/math`, `std/os`, `std/file`, `std/random`,
   `std/crypto`, `std/json`, `std/time`, `std/thread`, `std/network`,
-  `std/inline`, `std/gfx`
+  `std/inline`, `std/gfx`, `std/ui`
 - **Windows and sound** in `std/gfx`: X11 is built into the program, so it
   opens a window on any X server -- or, on a Wayland desktop such as
   Raspberry Pi OS's, through XWayland -- with no X libraries installed. Sound
   goes straight to the kernel, including the Raspberry Pi 4 and 5 HDMI ports.
-  See [How windows work here](#how-windows-work-here).
+  See [How windows work here](#how-windows-work-here). `std/ui` -- widgets,
+  themes and smooth text -- is plain C++ on top of it and needs nothing more.
 - **The whole C++ standard library** for `inline_cpp!` — iostreams,
   `<filesystem>`, `<regex>`, `<charconv>`, locales, threads and the rest —
   plus musl's Linux system calls, so inline C++ can open `/dev/gpiochip0`,
