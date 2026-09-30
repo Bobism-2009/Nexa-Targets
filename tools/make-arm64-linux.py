@@ -55,6 +55,7 @@ MUSL_URL = 'https://musl.libc.org/releases/musl-%s.tar.gz' % MUSL_VERSION
 LLVM_TAG = 'llvmorg-22.1.4'
 LLVM_URL = 'https://github.com/llvm/llvm-project.git'
 ARCH = 'aarch64'
+KERNEL_ARCH = 'arm64'     # the kernel's name for it: make ARCH=...
 LINUX_VERSION = '6.18.53'
 MBEDTLS_VERSION = '3.6.7'
 MBEDTLS_URL = ('https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-%s/mbedtls-%s.tar.bz2'
@@ -362,10 +363,10 @@ def build_linux_headers(work):
         urllib.request.urlretrieve(LINUX_URL, txz)
         with tarfile.open(txz) as t:
             t.extractall(work)
-    staged = os.path.join(work, 'linux-headers-arm64')
+    staged = os.path.join(work, 'linux-headers-' + KERNEL_ARCH)
     if os.path.exists(staged):
         shutil.rmtree(staged)
-    subprocess.check_call(['make', '-s', '-C', src, 'ARCH=arm64',
+    subprocess.check_call(['make', '-s', '-C', src, 'ARCH=' + KERNEL_ARCH,
                            'INSTALL_HDR_PATH=' + staged, 'headers_install'])
     out = os.path.join(SRC, 'linux-headers')
     copytree(os.path.join(staged, 'include'), os.path.join(out, 'include'))

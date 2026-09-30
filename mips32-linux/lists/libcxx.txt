@@ -1,0 +1,20 @@
+# The part of libc++ Nexa's own runtime reaches: every program links it.
+# Relative to sources/libcxx.
+src/new.cpp
+src/new_helpers.cpp
+src/verbose_abort.cpp
+src/string.cpp
+src/random.cpp
+src/thread.cpp
+src/system_error.cpp
+src/mutex.cpp
+src/condition_variable.cpp
+src/future.cpp
+src/stdexcept.cpp
+src/exception.cpp
+src/typeinfo.cpp
+src/error_category.cpp
+src/functional.cpp
+src/mutex_destructor.cpp
+src/condition_variable_destructor.cpp
+src/algorithm.cpp

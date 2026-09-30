@@ -13,7 +13,8 @@ NexaC hello.nxa --target arm64-linux
 
 | Target | Platform | Status |
 |---|---|---|
-| [`arm64-linux`](arm64-linux/) | 64-bit ARM Linux (AArch64): Raspberry Pi OS 64-bit, ARM servers, Linux VMs on Apple Silicon | 1.4.0 |
+| [`arm64-linux`](arm64-linux/) | 64-bit ARM Linux (AArch64): Raspberry Pi OS 64-bit, ARM servers, Linux VMs on Apple Silicon | 1.5.0 |
+| [`mips32-linux`](mips32-linux/) | 32-bit little-endian MIPS Linux (mipsel, MIPS32r2, soft float): MT7621/MT7628 routers, OpenWrt `ramips` | 1.0.0 |
 
 ## How a target works
 
