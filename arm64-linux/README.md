@@ -136,3 +136,7 @@ be taken from that build.
 clang 21 or newer (the libc++ here is LLVM 22's, which supports the two most
 recent clang releases), with `ld.lld` and `llvm-ar` beside it — all part of an
 ordinary LLVM install.
+
+`target.json` names the ELF emulation (`-m aarch64linux`) in `"link"`: MSYS2's
+`ld.lld` links Windows programs unless told otherwise, and with it this
+target builds with MSYS2's clang as well as with the llvm.org one.

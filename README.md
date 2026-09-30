@@ -13,8 +13,8 @@ NexaC hello.nxa --target arm64-linux
 
 | Target | Platform | Status |
 |---|---|---|
-| [`arm64-linux`](arm64-linux/) | 64-bit ARM Linux (AArch64): Raspberry Pi OS 64-bit, ARM servers, Linux VMs on Apple Silicon | 1.5.0 |
-| [`mips32-linux`](mips32-linux/) | 32-bit little-endian MIPS Linux (mipsel, MIPS32r2, soft float): MT7621/MT7628 routers, OpenWrt `ramips` | 1.0.0 |
+| [`arm64-linux`](arm64-linux/) | 64-bit ARM Linux (AArch64): Raspberry Pi OS 64-bit, ARM servers, Linux VMs on Apple Silicon | 1.5.1 |
+| [`mips32-linux`](mips32-linux/) | 32-bit little-endian MIPS Linux (mipsel, MIPS32r2, soft float): MT7621/MT7628 routers, OpenWrt `ramips` | 1.0.1 |
 
 ## How a target works
 
@@ -24,8 +24,8 @@ else the platform needs, as source, plus a `target.json` saying how to build
 it. You can read every line of what ends up in your program.
 
 **It is all compiled after you run NexaC**, by the clang you already have:
-clang can build for every CPU LLVM supports, whether or not anyone asked it
-to. The first `--target` build compiles the platform's runtime from source
+clang can build for every CPU its LLVM was built with, whether or not anyone
+asked it to. The first `--target` build compiles the platform's runtime from source
 (for `arm64-linux`, about 10 seconds on Linux and under a minute on Windows)
 and keeps the result in
 `~/.nexa/cache/targets/`. Every build after that is a single compile and link.
@@ -55,6 +55,12 @@ repository growing more targets does not make any one of them slower to get.
   (`"clang"`), and NexaC checks it. On Windows, the LLVM installer from
   llvm.org; on Linux and macOS, your package manager's `clang`/`llvm`. `ld.lld`
   and `llvm-ar`, which come with LLVM, are used too.
+  It also needs the target CPU's backend. Linux distributions' and Homebrew's
+  LLVM have every one. The llvm.org Windows installer has x86, ARM and a few
+  others but not MIPS; for `mips32-linux` on Windows, use MSYS2's clang
+  (`pacman -S mingw-w64-clang-x86_64-clang mingw-w64-clang-x86_64-lld`).
+  NexaC picks, of the clangs it finds, the first that has the backend, and
+  says which it tried if none does.
 - git, to install
 
 ## Adding a target

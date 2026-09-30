@@ -62,7 +62,7 @@ start on them.
 
 All source, compiled by your clang the first time you build for this target,
 then cached in `~/.nexa/cache/targets/mips32-linux/`: about 11 seconds on
-Linux. Most of libc++ is compiled only the first time a program includes
+Linux, under a minute on Windows. Most of libc++ is compiled only the first time a program includes
 `std/inline` (about 5 more seconds), and mbedTLS the first time one includes
 `std/network` (about 2).
 
@@ -106,7 +106,17 @@ installed copies rebuild their runtime.
 
 clang 21 or newer **built with the MIPS backend**, with `ld.lld` and `llvm-ar`
 beside it. `clang -print-targets` lists `mipsel` when it has it. Linux
-distributions' clang packages and Homebrew's `llvm` do. The llvm.org Windows
-installer and llvm-mingw do not: they build for x86 and ARM only, and NexaC
-stops with `No available targets are compatible with triple
-"mipsel-unknown-linux-musl"`. On Windows, build in WSL.
+distributions' clang packages and Homebrew's `llvm` do. On Windows, the
+llvm.org installer and llvm-mingw do not; MSYS2's clang does:
+
+```sh
+pacman -S mingw-w64-clang-x86_64-clang mingw-w64-clang-x86_64-lld
+```
+
+NexaC finds it in `C:\msys64\clang64\bin` (or wherever `NEXA_TARGET_CLANG`
+points) and uses it for this target even when another clang comes first on
+`PATH`. With no clang that has the backend, NexaC says so and lists the ones
+it tried.
+
+MSYS2's `ld.lld` links Windows programs unless told otherwise, which is why
+`target.json` names the ELF emulation (`-m elf32ltsmip`) in `"link"`.

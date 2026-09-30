@@ -1,6 +1,6 @@
 {
   "name": "mips32-linux",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "32-bit little-endian MIPS Linux (mipsel, MIPS32r2, soft float): static programs, built against musl from source",
   "os": "linux",
   "triple": "mipsel-linux-musl",
@@ -135,5 +135,5 @@
     ]
   },
 
-  "link": ["--eh-frame-hdr"]
+  "link": ["-m", "elf32ltsmip", "--eh-frame-hdr"]
 }
